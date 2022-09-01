@@ -1,1 +1,1 @@
-Display the content list of your current directory
+the script that changes the working directory to the user directory
