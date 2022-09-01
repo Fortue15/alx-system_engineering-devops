@@ -1,1 +1,1 @@
-the script that changes the working directory to the user directory
+ display current content in long format
