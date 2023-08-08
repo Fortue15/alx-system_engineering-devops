@@ -1,63 +1,77 @@
 #!/usr/bin/python3
-""" Module for storing the count_words function. """
-from requests import get
+""" A more advanced introduction to APIs in python
+Access data from the Reddit API, process it, then generate an output.
+"""
+import requests
+from sys import argv
 
 
-def count_words(subreddit, word_list, word_count=[], page_after=None):
+def count_words(subreddit, word_list=[]):
+    """ Parses the titles of all hot articles and
+    pretty-prints a sorted count of given keywords.
     """
-    Prints the count of the given words present in the title of the
-    subreddit's hottest articles.
-    """
-    headers = {'User-Agent': 'HolbertonSchool'}
+    # INPUT VALIDATION: Check if subreddit is string and two lists are lists
+    if not isinstance(subreddit, str) or not isinstance(word_list, list):
+        return
 
-    word_list = [word.lower() for word in word_list]
-
-    if bool(word_count) is False:
-        for word in word_list:
-            word_count.append(0)
-
-    if page_after is None:
-        url = 'https://www.reddit.com/r/{}/hot.json'.format(subreddit)
-        r = get(url, headers=headers, allow_redirects=False)
-        if r.status_code == 200:
-            for child in r.json()['data']['children']:
-                i = 0
-                for i in range(len(word_list)):
-                    for word in [w for w in child['data']['title'].split()]:
-                        word = word.lower()
-                        if word_list[i] == word:
-                            word_count[i] += 1
-                    i += 1
-
-            if r.json()['data']['after'] is not None:
-                count_words(subreddit, word_list,
-                            word_count, r.json()['data']['after'])
-    else:
-        url = ('https://www.reddit.com/r/{}/hot.json?after={}'
-               .format(subreddit,
-                       page_after))
-        r = get(url, headers=headers, allow_redirects=False)
-
-        if r.status_code == 200:
-            for child in r.json()['data']['children']:
-                i = 0
-                for i in range(len(word_list)):
-                    for word in [w for w in child['data']['title'].split()]:
-                        word = word.lower()
-                        if word_list[i] == word:
-                            word_count[i] += 1
-                    i += 1
-            if r.json()['data']['after'] is not None:
-                count_words(subreddit, word_list,
-                            word_count, r.json()['data']['after'])
+    title_words = recurse(subreddit)
+    if not title_words:
+        return
+    word_counts = {}
+    for word in word_list:
+        word = str(word).lower()
+        count = title_words.lower().split().count(word)
+        if count:
+            if word in word_counts.keys():
+                word_counts[word] += count
             else:
-                dicto = {}
-                for key_word in list(set(word_list)):
-                    i = word_list.index(key_word)
-                    if word_count[i] != 0:
-                        dicto[word_list[i]] = (word_count[i] *
-                                               word_list.count(word_list[i]))
+                word_counts[word] = count
 
-                for key, value in sorted(dicto.items(),
-                                         key=lambda x: (-x[1], x[0])):
-                    print('{}: {}'.format(key, value))
+    # Pretty-print results
+    for key in word_counts.keys():
+        print('{}: {}'.format(key, word_counts[key]))
+
+
+def recurse(subreddit, hot_list='', __after='', __count=0):
+    """ Recursively fetches and returns the titles
+    of all the hot articles in a given subreddit.
+    """
+    # INPUT VALIDATION: Check if subreddit is string and __hot_list is list
+    if not isinstance(subreddit, str):
+        return
+    if not isinstance(hot_list, str):
+        hot_list = ''
+
+    # Declare variables used by function
+    header = {'User-agent': "Donald's ALX_SE API"}
+    query_str = {'t': 'all', 'limit': 100, 'after': __after, 'count': __count}
+    url = 'https://reddit.com/r/{}/hot.json'.format(subreddit)
+
+    # Fetch data from REST API
+    request = requests.get(url, headers=header, params=query_str)
+
+    # Locate and return number of subreddit subscribers, or 0 on error
+    try:
+        result = []
+        prev_count = __count
+        for post in request.json()['data']['children']:
+            hot_list += (post['data']['title'])
+            __count += 1
+            __after = post['data']['name']
+        if __count > prev_count:
+            result = recurse(subreddit, hot_list, __after, __count)
+            if result:
+                return result
+        return hot_list
+    except Exception:
+        return
+
+
+if __name__ == '__main__':
+    """ Runs the program if not imported as a module. """
+
+    if len(argv) >= 3:
+        count_words(argv[1], argv[2].split())
+    count_words('programming', ['developer'])
+    count_words('programming',
+                ['javA', 'JAVA', 'JavaScript', 8748934, 'ChatGPT', 'API'])
